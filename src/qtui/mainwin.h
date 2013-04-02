@@ -112,6 +112,7 @@ private slots:
     void removeBufferView(int bufferViewConfigId);
     void currentBufferChanged(BufferId);
     void messagesInserted(const QModelIndex &parent, int start, int end);
+    void openConfigDir();
     void showAboutDlg();
     void showChannelList(NetworkId netId = NetworkId());
     void showCoreConnectionDlg();

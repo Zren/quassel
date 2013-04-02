@@ -20,6 +20,7 @@
 
 #include "mainwin.h"
 
+#include <QDesktopServices>
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QStatusBar>
@@ -404,6 +405,12 @@ void MainWin::setupActions()
   #endif
     coll->addAction("ConfigureQuassel", configureQuasselAct);
 
+    QAction *openConfigDirAct = new Action(SmallIcon("configure"), tr("Open Config Folder"), coll,
+        this, SLOT(openConfigDir()));
+    openConfigDirAct->setMenuRole(QAction::NoRole);
+    coll->addAction("OpenConfigDir", openConfigDirAct);
+
+
     // Help
     QAction *aboutQuasselAct = new Action(SmallIcon("quassel"), tr("&About Quassel"), coll,
         this, SLOT(showAboutDlg()));
@@ -547,6 +554,8 @@ void MainWin::setupMenus()
     _settingsMenu->addAction(coll->action("ConfigureShortcuts"));
 #endif
     _settingsMenu->addAction(coll->action("ConfigureQuassel"));
+    _settingsMenu->addAction(coll->action("OpenConfigDir"));
+
 
     _helpMenu = menuBar()->addMenu(tr("&Help"));
     _helpMenu->addAction(coll->action("AboutQuassel"));
@@ -1330,6 +1339,11 @@ void MainWin::showSettingsDlg()
     }
 
     dlg->show();
+}
+
+void MainWin::openConfigDir()
+{
+    QDesktopServices::openUrl(QUrl("file://" + Quassel::configDirPath()));
 }
 
 
