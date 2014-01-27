@@ -59,6 +59,7 @@ BufferViewSettingsPage::BufferViewSettingsPage(QWidget *parent)
     connect(ui.onlyQueryBuffers, SIGNAL(clicked(bool)), this, SLOT(widgetHasChanged()));
     connect(ui.addNewBuffersAutomatically, SIGNAL(clicked(bool)), this, SLOT(widgetHasChanged()));
     connect(ui.sortAlphabetically, SIGNAL(clicked(bool)), this, SLOT(widgetHasChanged()));
+    connect(ui.hideEmptyNetworks, SIGNAL(clicked(bool)), this, SLOT(widgetHasChanged()));
     connect(ui.hideInactiveBuffers, SIGNAL(clicked(bool)), this, SLOT(widgetHasChanged()));
     connect(ui.networkSelector, SIGNAL(currentIndexChanged(int)), this, SLOT(widgetHasChanged()));
     connect(ui.minimumActivitySelector, SIGNAL(currentIndexChanged(int)), this, SLOT(widgetHasChanged()));
@@ -434,6 +435,7 @@ void BufferViewSettingsPage::loadConfig(BufferViewConfig *config)
     ui.onlyQueryBuffers->setChecked(BufferInfo::QueryBuffer & config->allowedBufferTypes());
     ui.addNewBuffersAutomatically->setChecked(config->addNewBuffersAutomatically());
     ui.sortAlphabetically->setChecked(config->sortAlphabetically());
+    ui.hideEmptyNetworks->setChecked(config->hideEmptyNetworks());
     ui.hideInactiveBuffers->setChecked(config->hideInactiveBuffers());
 
     int networkIndex = 0;
@@ -475,6 +477,7 @@ void BufferViewSettingsPage::saveConfig(BufferViewConfig *config)
 
     config->setAddNewBuffersAutomatically(ui.addNewBuffersAutomatically->isChecked());
     config->setSortAlphabetically(ui.sortAlphabetically->isChecked());
+    config->setHideEmptyNetworks(ui.hideEmptyNetworks->isChecked());
     config->setHideInactiveBuffers(ui.hideInactiveBuffers->isChecked());
     config->setNetworkId(ui.networkSelector->itemData(ui.networkSelector->currentIndex()).value<NetworkId>());
 

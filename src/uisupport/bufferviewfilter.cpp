@@ -343,9 +343,12 @@ bool BufferViewFilter::filterAcceptBuffer(const QModelIndex &source_bufferIndex)
         return false;
     }
 
+    // Hide if we've selected a network for this BufferView and this buffer doesn't belong to it.
     if (config()->networkId().isValid() && config()->networkId() != sourceModel()->data(source_bufferIndex, NetworkModel::NetworkIdRole).value<NetworkId>())
         return false;
 
+    // Hide if not an allowed buffer type.
+    // The status buffer cannot be hidden when >1 Network is shown.
     int allowedBufferTypes = config()->allowedBufferTypes();
     if (!config()->networkId().isValid())
         allowedBufferTypes &= ~BufferInfo::StatusBuffer;
@@ -353,18 +356,26 @@ bool BufferViewFilter::filterAcceptBuffer(const QModelIndex &source_bufferIndex)
     if (!(allowedBufferTypes & bufferType))
         return false;
 
-    if (bufferType & BufferInfo::QueryBuffer && !_showServerQueries && sourceModel()->data(source_bufferIndex, Qt::DisplayRole).toString().contains('.')) {
+    // Hide if a server query buffer and we are hiding them.
+    // We distinguish server queries from regular queries by checking for a period.
+    if (bufferType & BufferInfo::QueryBuffer && !_showServerQueries && sourceModel()->data(source_bufferIndex, Qt::DisplayRole).toString().contains('.'))
         return false;
-    }
+    
 
-    // the following dynamic filters may not trigger if the buffer is currently selected.
+    // Show if currently selected.
+    // The dynamic filters following this may not trigger if the buffer is currently selected.
     QModelIndex currentIndex = Client::bufferModel()->standardSelectionModel()->currentIndex();
     if (bufferId == Client::bufferModel()->data(currentIndex, NetworkModel::BufferIdRole).value<BufferId>())
         return true;
 
+    // Hide if we're hiding inactive buffers.
+    // Inactive buffers consist of:
+    //     OtherActivity and below on a disconnected network.
+    //     NoActivity on a connected network.
     if (config()->hideInactiveBuffers() && !sourceModel()->data(source_bufferIndex, NetworkModel::ItemActiveRole).toBool() && activityLevel <= BufferInfo::OtherActivity)
         return false;
 
+    // Hide if under the minimum activity level.
     if (config()->minimumActivity() > activityLevel)
         return false;
 
@@ -374,15 +385,28 @@ bool BufferViewFilter::filterAcceptBuffer(const QModelIndex &source_bufferIndex)
 
 bool BufferViewFilter::filterAcceptNetwork(const QModelIndex &source_index) const
 {
+    // Show if there is no config.
     if (!config())
         return true;
 
-    if (!config()->networkId().isValid()) {
-        return true;
+    // Hide if we've selected a network for this BufferView and this network doesn't belong to it.
+    if (config()->networkId().isValid() && config()->networkId() != sourceModel()->data(source_index, NetworkModel::NetworkIdRole).value<NetworkId>())
+        return false;
+    
+    // Hide if the network has no visible children.
+    if (config()->hideEmptyNetworks()) {
+        bool visibleChild = false;
+        int rowCount = sourceModel()->rowCount(source_index)
+        for (int i = 0; i < rowCount; ++i) {
+            visibleChild = filterAcceptsRow(i, source_index);
+            if (visibleChild)
+                break;
+        }
+        if (!visibleChild)
+            return false;
     }
-    else {
-        return config()->networkId() == sourceModel()->data(source_index, NetworkModel::NetworkIdRole).value<NetworkId>();
-    }
+
+    return true;
 }
 
 

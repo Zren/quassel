@@ -46,6 +46,7 @@ private:
     QTextEdit *_removedBufferIds;
     QTextEdit *_tempRemovedBufferIds;
     QLabel *_addBuffersAutomatically;
+    QLabel *_hideEmptyNetworks;
     QLabel *_hideInactiveBuffers;
     QLabel *_allowedBufferTypes;
     QLabel *_minimumActivity;

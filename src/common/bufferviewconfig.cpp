@@ -28,6 +28,7 @@ BufferViewConfig::BufferViewConfig(int bufferViewId, QObject *parent)
     _bufferViewId(bufferViewId),
     _addNewBuffersAutomatically(true),
     _sortAlphabetically(true),
+    _hideEmptyNetworks(false),
     _hideInactiveBuffers(false),
     _disableDecoration(false),
     _allowedBufferTypes(BufferInfo::StatusBuffer | BufferInfo::ChannelBuffer | BufferInfo::QueryBuffer | BufferInfo::GroupBuffer),
@@ -119,6 +120,17 @@ void BufferViewConfig::setMinimumActivity(int activity)
 
     _minimumActivity = activity;
     SYNC(ARG(activity))
+    emit configChanged();
+}
+
+
+void BufferViewConfig::setHideEmptyNetworks(bool hideEmptyNetworks)
+{
+    if (_hideEmptyNetworks == hideEmptyNetworks)
+        return;
+
+    _hideEmptyNetworks = hideEmptyNetworks;
+    SYNC(ARG(hideEmptyNetworks))
     emit configChanged();
 }
 
