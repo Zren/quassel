@@ -396,7 +396,7 @@ bool BufferViewFilter::filterAcceptNetwork(const QModelIndex &source_index) cons
     // Hide if the network has no visible children.
     if (config()->hideEmptyNetworks()) {
         bool visibleChild = false;
-        int rowCount = sourceModel()->rowCount(source_index)
+        int rowCount = sourceModel()->rowCount(source_index);
         for (int i = 0; i < rowCount; ++i) {
             visibleChild = filterAcceptsRow(i, source_index);
             if (visibleChild)
