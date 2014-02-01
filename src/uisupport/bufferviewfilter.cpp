@@ -392,6 +392,15 @@ bool BufferViewFilter::filterAcceptNetwork(const QModelIndex &source_index) cons
     // Hide if we've selected a network for this BufferView and this network doesn't belong to it.
     if (config()->networkId().isValid() && config()->networkId() != sourceModel()->data(source_index, NetworkModel::NetworkIdRole).value<NetworkId>())
         return false;
+
+    // Show if currently selected.
+    // The dynamic filters following this may not trigger if the buffer is currently selected.
+    BufferId bufferId = sourceModel()->data(source_index, NetworkModel::BufferIdRole).value<BufferId>();
+    Q_ASSERT(bufferId.isValid());
+
+    QModelIndex currentIndex = Client::bufferModel()->standardSelectionModel()->currentIndex();
+    if (bufferId == Client::bufferModel()->data(currentIndex, NetworkModel::BufferIdRole).value<BufferId>())
+        return true;
     
     // Hide if the network has no visible children.
     if (config()->hideEmptyNetworks()) {
