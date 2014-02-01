@@ -307,6 +307,12 @@ void NetworkModelController::handleHideAction(ActionType type, QAction *action)
 {
     Q_UNUSED(action)
 
+    if (type == HideJoinPartQuit) {
+        NetworkModelController::action(HideJoin)->toggle();
+        NetworkModelController::action(HidePart)->toggle();
+        NetworkModelController::action(HideQuit)->toggle();
+    }
+
     int filter = 0;
     if (NetworkModelController::action(HideJoin)->isChecked())
         filter |= Message::Join | Message::NetsplitJoin;
@@ -324,6 +330,7 @@ void NetworkModelController::handleHideAction(ActionType type, QAction *action)
         filter |= Message::Topic;
 
     switch (type) {
+    case HideJoinPartQuit:
     case HideJoin:
     case HidePart:
     case HideQuit:
