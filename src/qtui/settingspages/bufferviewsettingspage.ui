@@ -105,6 +105,13 @@
        </layout>
       </item>
       <item>
+       <widget class="QCheckBox" name="hideEmptyNetworks">
+        <property name="text">
+         <string>Hide empty networks</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="onlyStatusBuffers">
         <property name="toolTip">
          <string>This option is not available when all Networks are visible.

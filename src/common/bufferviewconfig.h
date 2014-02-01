@@ -34,6 +34,7 @@ class BufferViewConfig : public SyncableObject
     Q_PROPERTY(NetworkId networkId READ networkId WRITE setNetworkId)
     Q_PROPERTY(bool addNewBuffersAutomatically READ addNewBuffersAutomatically WRITE setAddNewBuffersAutomatically)
     Q_PROPERTY(bool sortAlphabetically READ sortAlphabetically WRITE setSortAlphabetically)
+    Q_PROPERTY(bool hideEmptyNetworks READ hideEmptyNetworks WRITE setHideEmptyNetworks)
     Q_PROPERTY(bool hideInactiveBuffers READ hideInactiveBuffers WRITE setHideInactiveBuffers)
     Q_PROPERTY(bool disableDecoration READ disableDecoration WRITE setDisableDecoration)
     Q_PROPERTY(int allowedBufferTypes READ allowedBufferTypes WRITE setAllowedBufferTypes)
@@ -68,6 +69,9 @@ public slots:
 
     inline int minimumActivity() const { return _minimumActivity; }
     void setMinimumActivity(int activity);
+
+    inline bool hideEmptyNetworks() const { return _hideEmptyNetworks; }
+    void setHideEmptyNetworks(bool hideEmptyNetworks);
 
     inline bool hideInactiveBuffers() const { return _hideInactiveBuffers; }
     void setHideInactiveBuffers(bool hideInactiveBuffers);
@@ -126,6 +130,7 @@ private:
     NetworkId _networkId;
     bool _addNewBuffersAutomatically;
     bool _sortAlphabetically;
+    bool _hideEmptyNetworks;
     bool _hideInactiveBuffers;
     bool _disableDecoration;
     int _allowedBufferTypes;
