@@ -343,7 +343,7 @@ bool BufferViewFilter::filterAcceptBuffer(const QModelIndex &source_bufferIndex)
         return false;
     }
 
-    // Hide if we've selected a network for this BufferView and this buffer doesn't belong to it.
+    // Hide if we've selected a network for this BufferView in the config and this buffer doesn't belong to it.
     if (config()->networkId().isValid() && config()->networkId() != sourceModel()->data(source_bufferIndex, NetworkModel::NetworkIdRole).value<NetworkId>())
         return false;
 
@@ -389,7 +389,7 @@ bool BufferViewFilter::filterAcceptNetwork(const QModelIndex &source_index) cons
     if (!config())
         return true;
 
-    // Hide if we've selected a network for this BufferView and this network doesn't belong to it.
+    // Hide if we've selected a network for this BufferView in the config and this network doesn't belong to it.
     if (config()->networkId().isValid() && config()->networkId() != sourceModel()->data(source_index, NetworkModel::NetworkIdRole).value<NetworkId>())
         return false;
 
