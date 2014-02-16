@@ -73,6 +73,7 @@ public slots:
     void checkPreviousCurrentForRemoval(const QModelIndex &current, const QModelIndex &previous);
     void checkItemForRemoval(const QModelIndex &index) { checkItemsForRemoval(index, index); }
     void checkItemsForRemoval(const QModelIndex &topLeft, const QModelIndex &bottomRight);
+    void bufferViewSelectionChanged(const QItemSelection &current, const QItemSelection &previous);
 
 protected:
     bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const;

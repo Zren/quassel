@@ -169,6 +169,8 @@ void BufferView::setSelectionModel(QItemSelectionModel *selectionModel)
     if (filter) {
         connect(selectionModel, SIGNAL(currentChanged(QModelIndex, QModelIndex)),
             filter, SLOT(checkPreviousCurrentForRemoval(QModelIndex, QModelIndex)));
+        connect(selectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
+            filter, SLOT(bufferViewSelectionChanged(const QItemSelection &, const QItemSelection &)));
     }
 }
 
