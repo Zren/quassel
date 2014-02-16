@@ -617,3 +617,11 @@ bool BufferViewFilter::bufferIdLessThan(const BufferId &left, const BufferId &ri
     else
         return QString::compare(Client::networkModel()->data(leftIndex, Qt::DisplayRole).toString(), Client::networkModel()->data(rightIndex, Qt::DisplayRole).toString(), Qt::CaseInsensitive) < 0;
 }
+
+void BufferViewFilter::bufferViewSelectionChanged(const QItemSelection &current, const QItemSelection &previous)
+{
+    Q_UNUSED(current);
+    Q_UNUSED(previous);
+    
+    invalidateFilter();
+}
