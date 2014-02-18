@@ -18,43 +18,73 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 
-#include "peerfactory.h"
+#ifndef COMPRESSOR_H
+#define COMPRESSOR_H
 
-#include "protocols/datastream/datastreampeer.h"
-#include "protocols/legacy/legacypeer.h"
+#include <QObject>
 
+class QTcpSocket;
 
-PeerFactory::ProtoList PeerFactory::supportedProtocols()
+typedef struct mz_stream_s *z_streamp;
+
+class Compressor : public QObject
 {
-    ProtoList result;
-    result.append(ProtoDescriptor(Protocol::DataStreamProtocol, DataStreamPeer::supportedFeatures()));
-    result.append(ProtoDescriptor(Protocol::LegacyProtocol, 0));
-    return result;
-}
+    Q_OBJECT
 
+public:
+    enum CompressionLevel {
+        NoCompression,
+        DefaultCompression,
+        BestCompression,
+        BestSpeed
+    };
 
-RemotePeer *PeerFactory::createPeer(const ProtoDescriptor &protocol, AuthHandler *authHandler, QTcpSocket *socket, QObject *parent)
-{
-    return createPeer(ProtoList() << protocol, authHandler, socket, parent);
-}
+    enum Error {
+        NoError,
+        StreamError,
+        DeviceError
+    };
 
+    enum WriteBufferHint {
+        NoFlush,
+        Flush
+    };
 
-RemotePeer *PeerFactory::createPeer(const ProtoList &protocols, AuthHandler *authHandler, QTcpSocket *socket, QObject *parent)
-{
-    foreach(const ProtoDescriptor &protodesc, protocols) {
-        Protocol::Type proto = protodesc.first;
-        quint16 features = protodesc.second;
-        switch(proto) {
-            case Protocol::LegacyProtocol:
-                return new LegacyPeer(authHandler, socket, parent);
-            case Protocol::DataStreamProtocol:
-                if (DataStreamPeer::acceptsFeatures(features))
-                    return new DataStreamPeer(authHandler, socket, features, parent);
-                break;
-            default:
-                break;
-        }
-    }
+    Compressor(QTcpSocket *socket, CompressionLevel level, QObject *parent = 0);
+    ~Compressor();
 
-    return 0;
-}
+    CompressionLevel compressionLevel() const { return _level; }
+
+    qint64 bytesAvailable() const;
+
+    qint64 read(char *data, qint64 maxSize);
+    qint64 write(const char *data, qint64 count, WriteBufferHint flush = Flush);
+
+    void flush();
+
+signals:
+    void readyRead();
+    void error(Compressor::Error errorCode = StreamError);
+
+private slots:
+    void readData();
+
+private:
+    bool initStreams();
+    void writeData();
+
+private:
+    QTcpSocket *_socket;
+    CompressionLevel _level;
+
+    QByteArray _readBuffer;
+    QByteArray _writeBuffer;
+
+    QByteArray _inputBuffer;
+    QByteArray _outputBuffer;
+
+    z_streamp _inflater;
+    z_streamp _deflater;
+};
+
+#endif

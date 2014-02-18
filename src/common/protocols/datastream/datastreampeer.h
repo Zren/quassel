@@ -18,12 +18,14 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 
-#ifndef LEGACYPEER_H
-#define LEGACYPEER_H
+#ifndef DATASTREAMPEER_H
+#define DATASTREAMPEER_H
 
 #include "../../remotepeer.h"
 
-class LegacyPeer : public RemotePeer
+class QDataStream;
+
+class DataStreamPeer : public RemotePeer
 {
     Q_OBJECT
 
@@ -37,12 +39,14 @@ public:
         HeartBeatReply
     };
 
-    LegacyPeer(AuthHandler *authHandler, QTcpSocket *socket, QObject *parent = 0);
+    DataStreamPeer(AuthHandler *authHandler, QTcpSocket *socket, quint16 features, QObject *parent = 0);
 
-    Protocol::Type protocol() const { return Protocol::LegacyProtocol; }
-    QString protocolName() const { return "the legacy protocol"; }
+    Protocol::Type protocol() const { return Protocol::DataStreamProtocol; }
+    QString protocolName() const { return "the DataStream protocol"; }
 
-    void setSignalProxy(SignalProxy *proxy);
+    static quint16 supportedFeatures();
+    static bool acceptsFeatures(quint16 peerFeatures);
+    quint16 enabledFeatures() const;
 
     void dispatch(const Protocol::RegisterClient &msg);
     void dispatch(const Protocol::ClientDenied &msg);
@@ -66,22 +70,15 @@ public:
 signals:
     void protocolError(const QString &errorString);
 
-    // only used in compat mode
-    void protocolVersionMismatch(int actual, int expected);
-
 private:
     using RemotePeer::writeMessage;
-    void writeMessage(const QVariant &item);
+    void writeMessage(const QVariantMap &handshakeMsg);
+    void writeMessage(const QVariantList &sigProxyMsg);
     void processMessage(const QByteArray &msg);
 
-    void handleHandshakeMessage(const QVariant &msg);
-    void handlePackedFunc(const QVariant &packedFunc);
+    void handleHandshakeMessage(const QVariantList &mapData);
+    void handlePackedFunc(const QVariantList &packedFunc);
     void dispatchPackedFunc(const QVariantList &packedFunc);
-
-    void toLegacyIrcUsersAndChannels(QVariantMap &initData);
-    void fromLegacyIrcUsersAndChannels(QVariantMap &initData);
-
-    bool _useCompression;
 };
 
 #endif

@@ -18,6 +18,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.         *
  ***************************************************************************/
 
+#include <QtEndian>
+
 #include <QHostAddress>
 #include <QTimer>
 
@@ -31,16 +33,19 @@
 
 using namespace Protocol;
 
-RemotePeer::RemotePeer(::AuthHandler *authHandler, QTcpSocket *socket, QObject *parent)
+const quint32 maxMessageSize = 64 * 1024 * 1024; // This is uncompressed size. 64 MB should be enough for any sort of initData or backlog chunk
+
+RemotePeer::RemotePeer(::AuthHandler *authHandler, QTcpSocket *socket, Compressor::CompressionLevel level, QObject *parent)
     : Peer(authHandler, parent),
     _socket(socket),
+    _compressor(new Compressor(socket, level, this)),
     _signalProxy(0),
     _heartBeatTimer(new QTimer(this)),
     _heartBeatCount(0),
-    _lag(0)
+    _lag(0),
+    _msgSize(0)
 {
     socket->setParent(this);
-    connect(socket, SIGNAL(readyRead()), SLOT(onSocketDataAvailable()));
     connect(socket, SIGNAL(stateChanged(QAbstractSocket::SocketState)), SLOT(onSocketStateChanged(QAbstractSocket::SocketState)));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(onSocketError(QAbstractSocket::SocketError)));
     connect(socket, SIGNAL(disconnected()), SIGNAL(disconnected()));
@@ -51,12 +56,10 @@ RemotePeer::RemotePeer(::AuthHandler *authHandler, QTcpSocket *socket, QObject *
         connect(sslSocket, SIGNAL(encrypted()), SIGNAL(secureStateChanged()));
 #endif
 
-    connect(_heartBeatTimer, SIGNAL(timeout()), SLOT(sendHeartBeat()));
+    connect(_compressor, SIGNAL(readyRead()), SLOT(onReadyRead()));
+    connect(_compressor, SIGNAL(error(Compressor::Error)), SLOT(onCompressionError(Compressor::Error)));
 
-    // It's possible that more data has already arrived during the handshake, so readyRead() wouldn't be triggered.
-    // However, we can't call a virtual function from the ctor, so let's do it asynchronously.
-    if (socket->bytesAvailable())
-        QTimer::singleShot(0, this, SLOT(onSocketDataAvailable()));
+    connect(_heartBeatTimer, SIGNAL(timeout()), SLOT(sendHeartBeat()));
 }
 
 
@@ -71,6 +74,12 @@ void RemotePeer::onSocketStateChanged(QAbstractSocket::SocketState state)
 void RemotePeer::onSocketError(QAbstractSocket::SocketError error)
 {
     emit socketError(error, socket()->errorString());
+}
+
+
+void RemotePeer::onCompressionError(Compressor::Error error)
+{
+    close(QString("Compression error %1").arg(error));
 }
 
 
@@ -180,6 +189,60 @@ void RemotePeer::close(const QString &reason)
 }
 
 
+void RemotePeer::onReadyRead()
+{
+    QByteArray msg;
+    while (readMessage(msg))
+        processMessage(msg);
+}
+
+
+bool RemotePeer::readMessage(QByteArray &msg)
+{
+    if (_msgSize == 0) {
+        if (_compressor->bytesAvailable() < 4)
+            return false;
+        _compressor->read((char*)&_msgSize, 4);
+        _msgSize = qFromBigEndian<quint32>(_msgSize);
+
+        if (_msgSize > maxMessageSize) {
+            close("Peer tried to send package larger than max package size!");
+            return false;
+        }
+
+        if (_msgSize == 0) {
+            close("Peer tried to send an empty message!");
+            return false;
+        }
+    }
+
+    if (_compressor->bytesAvailable() < _msgSize) {
+        emit transferProgress(socket()->bytesAvailable(), _msgSize);
+        return false;
+    }
+
+    emit transferProgress(_msgSize, _msgSize);
+
+    msg.resize(_msgSize);
+    qint64 bytesRead = _compressor->read(msg.data(), _msgSize);
+    if (bytesRead != _msgSize) {
+        close("Premature end of data stream!");
+        return false;
+    }
+
+    _msgSize = 0;
+    return true;
+}
+
+
+void RemotePeer::writeMessage(const QByteArray &msg)
+{
+    quint32 size = qToBigEndian<quint32>(msg.size());
+    _compressor->write((const char*)&size, 4, Compressor::NoFlush);
+    _compressor->write(msg.constData(), msg.size());
+}
+
+
 void RemotePeer::handle(const HeartBeat &heartBeat)
 {
     dispatch(HeartBeatReply(heartBeat.timestamp));
@@ -189,7 +252,7 @@ void RemotePeer::handle(const HeartBeat &heartBeat)
 void RemotePeer::handle(const HeartBeatReply &heartBeatReply)
 {
     _heartBeatCount = 0;
-#if QT_VERSION >= 0x040900
+#if QT_VERSION >= 0x040700
     emit lagUpdated(heartBeatReply.timestamp.msecsTo(QDateTime::currentDateTime().toUTC()) / 2);
 #else
     emit lagUpdated(heartBeatReply.timestamp.time().msecsTo(QDateTime::currentDateTime().toUTC().time()) / 2);

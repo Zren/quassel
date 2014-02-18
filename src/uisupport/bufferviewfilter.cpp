@@ -401,6 +401,10 @@ bool BufferViewFilter::filterAcceptNetwork(const QModelIndex &source_index) cons
     QModelIndex currentIndex = Client::bufferModel()->standardSelectionModel()->currentIndex();
     if (bufferId == Client::bufferModel()->data(currentIndex, NetworkModel::BufferIdRole).value<BufferId>())
         return true;
+
+    // Hide if we're hiding inactive networks.
+    if (config()->hideInactiveNetworks() && !(sourceModel()->data(source_index, NetworkModel::ItemActiveRole).toBool()))
+        return false;
     
     // Hide if the network has no visible children.
     if (config()->hideEmptyNetworks()) {

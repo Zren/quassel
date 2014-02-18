@@ -39,6 +39,10 @@ BufferViewSettingsPage::BufferViewSettingsPage(QWidget *parent)
     _bufferViewHint(0)
 {
     ui.setupUi(this);
+    //Hide the hide inactive networks feature on older cores (which won't save the setting)
+    if (!(Client::coreFeatures() & Quassel::HideInactiveNetworks))
+        ui.hideInactiveNetworks->hide();
+
     ui.renameBufferView->setIcon(SmallIcon("edit-rename"));
     ui.addBufferView->setIcon(SmallIcon("list-add"));
     ui.deleteBufferView->setIcon(SmallIcon("edit-delete"));
@@ -61,6 +65,7 @@ BufferViewSettingsPage::BufferViewSettingsPage(QWidget *parent)
     connect(ui.sortAlphabetically, SIGNAL(clicked(bool)), this, SLOT(widgetHasChanged()));
     connect(ui.hideEmptyNetworks, SIGNAL(clicked(bool)), this, SLOT(widgetHasChanged()));
     connect(ui.hideInactiveBuffers, SIGNAL(clicked(bool)), this, SLOT(widgetHasChanged()));
+    connect(ui.hideInactiveNetworks, SIGNAL(clicked(bool)), this, SLOT(widgetHasChanged()));
     connect(ui.networkSelector, SIGNAL(currentIndexChanged(int)), this, SLOT(widgetHasChanged()));
     connect(ui.minimumActivitySelector, SIGNAL(currentIndexChanged(int)), this, SLOT(widgetHasChanged()));
 
@@ -437,6 +442,7 @@ void BufferViewSettingsPage::loadConfig(BufferViewConfig *config)
     ui.sortAlphabetically->setChecked(config->sortAlphabetically());
     ui.hideEmptyNetworks->setChecked(config->hideEmptyNetworks());
     ui.hideInactiveBuffers->setChecked(config->hideInactiveBuffers());
+    ui.hideInactiveNetworks->setChecked(config->hideInactiveNetworks());
 
     int networkIndex = 0;
     for (int i = 0; i < ui.networkSelector->count(); i++) {
@@ -479,6 +485,7 @@ void BufferViewSettingsPage::saveConfig(BufferViewConfig *config)
     config->setSortAlphabetically(ui.sortAlphabetically->isChecked());
     config->setHideEmptyNetworks(ui.hideEmptyNetworks->isChecked());
     config->setHideInactiveBuffers(ui.hideInactiveBuffers->isChecked());
+    config->setHideInactiveNetworks(ui.hideInactiveNetworks->isChecked());
     config->setNetworkId(ui.networkSelector->itemData(ui.networkSelector->currentIndex()).value<NetworkId>());
 
     int minimumActivity = 0;

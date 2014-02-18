@@ -12,6 +12,7 @@ set(SOURCES
     bufferviewconfig.cpp
     bufferviewmanager.cpp
     cliparser.cpp
+    compressor.cpp
     coreinfo.cpp
     ctcpevent.cpp
     event.cpp
@@ -40,7 +41,10 @@ set(SOURCES
     transfermanager.cpp
     util.cpp
 
+    protocols/datastream/datastreampeer.cpp
     protocols/legacy/legacypeer.cpp
+
+    ../../3rdparty/miniz/miniz.c
 )
 
 set(MOC_HDRS
@@ -51,6 +55,7 @@ set(MOC_HDRS
     buffersyncer.h
     bufferviewconfig.h
     bufferviewmanager.h
+    compressor.h
     coreinfo.h
     eventmanager.h
     identity.h
@@ -62,7 +67,6 @@ set(MOC_HDRS
     network.h
     networkconfig.h
     peer.h
-    peerfactory.h
     remotepeer.h
     settings.h
     signalproxy.h
@@ -70,6 +74,7 @@ set(MOC_HDRS
     transfer.h
     transfermanager.h
 
+    protocols/datastream/datastreampeer.h
     protocols/legacy/legacypeer.h
 )
 
@@ -84,6 +89,7 @@ set(HEADERS ${MOC_HDRS}
     networkevent.h
     logger.h
     message.h
+    peerfactory.h
     protocol.h
     types.h
     util.h)

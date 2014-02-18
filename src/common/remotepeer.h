@@ -23,11 +23,11 @@
 
 #include <QDateTime>
 
+#include "compressor.h"
 #include "peer.h"
 #include "protocol.h"
 #include "signalproxy.h"
 
-class QTcpSocket;
 class QTimer;
 
 class AuthHandler;
@@ -41,11 +41,12 @@ public:
     using Peer::handle;
     using Peer::dispatch;
 
-    RemotePeer(AuthHandler *authHandler, QTcpSocket *socket, QObject *parent = 0);
+    RemotePeer(AuthHandler *authHandler, QTcpSocket *socket, Compressor::CompressionLevel level, QObject *parent = 0);
 
     void setSignalProxy(SignalProxy *proxy);
 
     virtual Protocol::Type protocol() const = 0;
+    virtual QString protocolName() const = 0;
     virtual QString description() const;
     virtual quint16 enabledFeatures() const { return 0; }
 
@@ -71,6 +72,9 @@ signals:
 protected:
     SignalProxy *signalProxy() const;
 
+    void writeMessage(const QByteArray &msg);
+    virtual void processMessage(const QByteArray &msg) = 0;
+
     // These protocol messages get handled internally and won't reach SignalProxy
     void handle(const Protocol::HeartBeat &heartBeat);
     void handle(const Protocol::HeartBeatReply &heartBeatReply);
@@ -78,20 +82,27 @@ protected:
     virtual void dispatch(const Protocol::HeartBeatReply &msg) = 0;
 
 protected slots:
-    virtual void onSocketDataAvailable() = 0;
     virtual void onSocketStateChanged(QAbstractSocket::SocketState state);
     virtual void onSocketError(QAbstractSocket::SocketError error);
 
 private slots:
+    void onReadyRead();
+    void onCompressionError(Compressor::Error error);
+
     void sendHeartBeat();
     void changeHeartBeatInterval(int secs);
 
 private:
+    bool readMessage(QByteArray &msg);
+
+private:
     QTcpSocket *_socket;
+    Compressor *_compressor;
     SignalProxy *_signalProxy;
     QTimer *_heartBeatTimer;
     int _heartBeatCount;
     int _lag;
+    quint32 _msgSize;
 };
 
 #endif

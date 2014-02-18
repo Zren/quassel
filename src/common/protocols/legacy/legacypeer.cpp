@@ -32,12 +32,10 @@ const uint clientNeedsProtocol = protocolVersion;
 using namespace Protocol;
 
 LegacyPeer::LegacyPeer(::AuthHandler *authHandler, QTcpSocket *socket, QObject *parent)
-    : RemotePeer(authHandler, socket, parent),
-    _blockSize(0),
+    : RemotePeer(authHandler, socket, Compressor::NoCompression, parent),
     _useCompression(false)
 {
-    _stream.setDevice(socket);
-    _stream.setVersion(QDataStream::Qt_4_2);
+
 }
 
 
@@ -56,56 +54,22 @@ void LegacyPeer::setSignalProxy(::SignalProxy *proxy)
 }
 
 
-void LegacyPeer::onSocketDataAvailable()
+void LegacyPeer::processMessage(const QByteArray &msg)
 {
+    QDataStream stream(msg);
+    stream.setVersion(QDataStream::Qt_4_2);
+
     QVariant item;
-    while (readSocketData(item)) {
-        // if no sigproxy is set, we're in handshake mode and let the data be handled elsewhere
-        if (!signalProxy())
-            handleHandshakeMessage(item);
-        else
-            handlePackedFunc(item);
-    }
-}
-
-
-bool LegacyPeer::readSocketData(QVariant &item)
-{
-    if (_blockSize == 0) {
-        if (socket()->bytesAvailable() < 4)
-            return false;
-        _stream >> _blockSize;
-    }
-
-    if (_blockSize > 1 << 22) {
-        close("Peer tried to send package larger than max package size!");
-        return false;
-    }
-
-    if (_blockSize == 0) {
-        close("Peer tried to send 0 byte package!");
-        return false;
-    }
-
-    if (socket()->bytesAvailable() < _blockSize) {
-        emit transferProgress(socket()->bytesAvailable(), _blockSize);
-        return false;
-    }
-
-    emit transferProgress(_blockSize, _blockSize);
-
-    _blockSize = 0;
-
     if (_useCompression) {
         QByteArray rawItem;
-        _stream >> rawItem;
+        stream >> rawItem;
 
         int nbytes = rawItem.size();
         if (nbytes <= 4) {
             const char *data = rawItem.constData();
             if (nbytes < 4 || (data[0] != 0 || data[1] != 0 || data[2] != 0 || data[3] != 0)) {
                 close("Peer sent corrupted compressed data!");
-                return false;
+                return;
             }
         }
 
@@ -116,25 +80,24 @@ bool LegacyPeer::readSocketData(QVariant &item)
         itemStream >> item;
     }
     else {
-        _stream >> item;
+        stream >> item;
     }
 
-    if (!item.isValid()) {
+    if (stream.status() != QDataStream::Ok || !item.isValid()) {
         close("Peer sent corrupt data: unable to load QVariant!");
-        return false;
-    }
-
-    return true;
-}
-
-
-void LegacyPeer::writeSocketData(const QVariant &item)
-{
-    if (!socket()->isOpen()) {
-        qWarning() << Q_FUNC_INFO << "Can't write to a closed socket!";
         return;
     }
 
+    // if no sigproxy is set, we're in handshake mode and let the data be handled elsewhere
+    if (!signalProxy())
+        handleHandshakeMessage(item);
+    else
+        handlePackedFunc(item);
+}
+
+
+void LegacyPeer::writeMessage(const QVariant &item)
+{
     QByteArray block;
     QDataStream out(&block, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
@@ -153,7 +116,7 @@ void LegacyPeer::writeSocketData(const QVariant &item)
         out << item;
     }
 
-    _stream << block;  // also writes the length as part of the serialization format
+    writeMessage(block);
 }
 
 
@@ -261,7 +224,7 @@ void LegacyPeer::dispatch(const RegisterClient &msg) {
     m["UseCompression"] = false;
 #endif
 
-    writeSocketData(m);
+    writeMessage(m);
 }
 
 
@@ -270,7 +233,7 @@ void LegacyPeer::dispatch(const ClientDenied &msg) {
     m["MsgType"] = "ClientInitReject";
     m["Error"] = msg.errorString;
 
-    writeSocketData(m);
+    writeMessage(m);
 }
 
 
@@ -298,7 +261,7 @@ void LegacyPeer::dispatch(const ClientRegistered &msg) {
 
     m["LoginEnabled"] = m["Configured"] = msg.coreConfigured;
 
-    writeSocketData(m);
+    writeMessage(m);
 }
 
 
@@ -313,7 +276,7 @@ void LegacyPeer::dispatch(const SetupData &msg)
     QVariantMap m;
     m["MsgType"] = "CoreSetupData";
     m["SetupData"] = map;
-    writeSocketData(m);
+    writeMessage(m);
 }
 
 
@@ -323,7 +286,7 @@ void LegacyPeer::dispatch(const SetupFailed &msg)
     m["MsgType"] = "CoreSetupReject";
     m["Error"] = msg.errorString;
 
-    writeSocketData(m);
+    writeMessage(m);
 }
 
 
@@ -334,7 +297,7 @@ void LegacyPeer::dispatch(const SetupDone &msg)
     QVariantMap m;
     m["MsgType"] = "CoreSetupAck";
 
-    writeSocketData(m);
+    writeMessage(m);
 }
 
 
@@ -345,7 +308,7 @@ void LegacyPeer::dispatch(const Login &msg)
     m["User"] = msg.user;
     m["Password"] = msg.password;
 
-    writeSocketData(m);
+    writeMessage(m);
 }
 
 
@@ -355,7 +318,7 @@ void LegacyPeer::dispatch(const LoginFailed &msg)
     m["MsgType"] = "ClientLoginReject";
     m["Error"] = msg.errorString;
 
-    writeSocketData(m);
+    writeMessage(m);
 }
 
 
@@ -366,7 +329,7 @@ void LegacyPeer::dispatch(const LoginSuccess &msg)
     QVariantMap m;
     m["MsgType"] = "ClientLoginAck";
 
-    writeSocketData(m);
+    writeMessage(m);
 }
 
 
@@ -381,7 +344,7 @@ void LegacyPeer::dispatch(const SessionState &msg)
     map["Identities"] = msg.identities;
     m["SessionState"] = map;
 
-    writeSocketData(m);
+    writeMessage(m);
 }
 
 
@@ -437,6 +400,10 @@ void LegacyPeer::handlePackedFunc(const QVariant &packedFunc)
             QByteArray className = params[0].toByteArray();
             QString objectName = params[1].toString();
             QVariantMap initData = params[2].toMap();
+
+            // we need to special-case IrcUsersAndChannels here, since the format changed
+            if (className == "Network")
+                fromLegacyIrcUsersAndChannels(initData);
             handle(Protocol::InitData(className, objectName, initData));
             break;
         }
@@ -489,7 +456,14 @@ void LegacyPeer::dispatch(const Protocol::InitRequest &msg)
 
 void LegacyPeer::dispatch(const Protocol::InitData &msg)
 {
-    dispatchPackedFunc(QVariantList() << (qint16)InitData << msg.className << msg.objectName << msg.initData);
+    // We need to special-case IrcUsersAndChannels, as the format changed
+    if (msg.className == "Network") {
+        QVariantMap initData = msg.initData;
+        toLegacyIrcUsersAndChannels(initData);
+        dispatchPackedFunc(QVariantList() << (qint16)InitData << msg.className << msg.objectName << initData);
+    }
+    else
+        dispatchPackedFunc(QVariantList() << (qint16)InitData << msg.className << msg.objectName << msg.initData);
 }
 
 
@@ -507,5 +481,74 @@ void LegacyPeer::dispatch(const Protocol::HeartBeatReply &msg)
 
 void LegacyPeer::dispatchPackedFunc(const QVariantList &packedFunc)
 {
-    writeSocketData(QVariant(packedFunc));
+    writeMessage(QVariant(packedFunc));
+}
+
+
+// Handle the changed format for Network's initData
+// cf. Network::initIrcUsersAndChannels()
+void LegacyPeer::fromLegacyIrcUsersAndChannels(QVariantMap &initData)
+{
+    const QVariantMap &legacyMap = initData["IrcUsersAndChannels"].toMap();
+    QVariantMap newMap;
+
+    QHash<QString, QVariantList> users;
+    foreach(const QVariant &v, legacyMap["users"].toMap().values()) {
+        const QVariantMap &map = v.toMap();
+        foreach(const QString &key, map.keys())
+            users[key] << map[key];
+    }
+    QVariantMap userMap;
+    foreach(const QString &key, users.keys())
+        userMap[key] = users[key];
+    newMap["Users"] = userMap;
+
+    QHash<QString, QVariantList> channels;
+    foreach(const QVariant &v, legacyMap["channels"].toMap().values()) {
+        const QVariantMap &map = v.toMap();
+        foreach(const QString &key, map.keys())
+            channels[key] << map[key];
+    }
+    QVariantMap channelMap;
+    foreach(const QString &key, channels.keys())
+        channelMap[key] = channels[key];
+    newMap["Channels"] = channelMap;
+
+    initData["IrcUsersAndChannels"] = newMap;
+}
+
+
+void LegacyPeer::toLegacyIrcUsersAndChannels(QVariantMap &initData)
+{
+    const QVariantMap &usersAndChannels = initData["IrcUsersAndChannels"].toMap();
+    QVariantMap legacyMap;
+
+    // toMap() and toList() are cheap, so no need to copy to a hash
+
+    QVariantMap userMap;
+    const QVariantMap &users = usersAndChannels["Users"].toMap();
+
+    int size = users["nick"].toList().size(); // we know this key exists
+    for(int i = 0; i < size; i++) {
+        QVariantMap map;
+        foreach(const QString &key, users.keys())
+            map[key] = users[key].toList().at(i);
+        QString hostmask = QString("%1!%2@%3").arg(map["nick"].toString(), map["user"].toString(), map["host"].toString());
+        userMap[hostmask.toLower()] = map;
+    }
+    legacyMap["users"] = userMap;
+
+    QVariantMap channelMap;
+    const QVariantMap &channels = usersAndChannels["Channels"].toMap();
+
+    size = channels["name"].toList().size();
+    for(int i = 0; i < size; i++) {
+        QVariantMap map;
+        foreach(const QString &key, channels.keys())
+            map[key] = channels[key].toList().at(i);
+        channelMap[map["name"].toString().toLower()] = map;
+    }
+    legacyMap["channels"] = channelMap;
+
+    initData["IrcUsersAndChannels"] = legacyMap;
 }
