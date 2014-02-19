@@ -820,8 +820,8 @@ void ChatScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         if (searchSelectionText.length() > _webSearchSelectionTextMaxVisible)
             searchSelectionText = searchSelectionText.left(_webSearchSelectionTextMaxVisible).append(QString::fromUtf8("…"));
         searchSelectionText = tr("Search '%1'").arg(searchSelectionText);
-
-        menu.addAction(SmallIcon("edit-find"), searchSelectionText, this, SLOT(webSearchOnSelection()));
+        QAction *webSearchAction = new Action(SmallIcon("edit-find"), searchSelectionText, &menu, this, SLOT(webSearchOnSelection()));
+        menu.insertAction(sep, webSearchAction);
     }
 
     if (QtUi::mainWindow()->menuBar()->isHidden())
