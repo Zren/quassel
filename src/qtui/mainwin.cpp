@@ -1491,9 +1491,12 @@ void MainWin::messagesInserted(const QModelIndex &parent, int start, int end)
         if (hasFocus && bufId == Client::bufferModel()->currentBuffer())
             continue;
 
-        // only show notifications for higlights or queries
-        if (bufType != BufferInfo::QueryBuffer && !(flags & Message::Highlight))
+        // only show notifications for highlights or queries
+        if (bufType == BufferInfo::QueryBuffer) {
+        } else if (flags.testFlag(Message::Highlight) && bufType != BufferInfo::StatusBuffer) {
+        } else {
             continue;
+        }
 
         // and of course: don't notify for ignored messages
         if (Client::ignoreListManager() && Client::ignoreListManager()->match(idx.data(MessageModel::MessageRole).value<Message>(), Client::networkModel()->networkName(bufId)))
