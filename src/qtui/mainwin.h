@@ -156,6 +156,8 @@ private slots:
     void saveStatusBarStatus(bool enabled);
     void saveMainToolBarStatus(bool enabled);
 
+    void MainWin::openIrcUri(const QString &ircUri);
+
     void loadLayout();
     void saveLayout();
 

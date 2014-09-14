@@ -134,6 +134,7 @@ int main(int argc, char **argv)
     cliParser->addOption("logfile <path>", 'l', "Log to a file");
     cliParser->addOption("select-backend <backendidentifier>", 0, "Switch storage backend (migrating data if possible)");
     cliParser->addSwitch("add-user", 0, "Starts an interactive session to add a new core user");
+    cliParser->addOption("join <ircuri>", 0, "Join a network/channel using an irc://<host>[:<port>]/[<channel>[?<password>]] URI.");
     cliParser->addOption("change-userpass <username>", 0, "Starts an interactive session to change the password of the user identified by username");
     cliParser->addSwitch("oidentd", 0, "Enable oidentd integration");
     cliParser->addOption("oidentd-conffile <file>", 0, "Set path to oidentd configuration file");

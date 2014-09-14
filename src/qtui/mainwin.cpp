@@ -1097,6 +1097,14 @@ void MainWin::setConnectedState()
 }
 
 
+void MainWin::openIrcUri(const QString &ircUri)
+{
+    // https://www.iana.org/assignments/uri-schemes/prov/irc
+    // Scheme syntax: irc://<host>[:<port>]/[<channel>[?<password>]]
+    qDebug() << ircUri;
+}
+
+
 void MainWin::loadLayout()
 {
     QtUiSettings s;
@@ -1115,6 +1123,9 @@ void MainWin::loadLayout()
         changeActiveBufferView(bufferViewId);
 
     _layoutLoaded = true;
+
+    if (Quassel::isOptionSet("join"))
+        openIrcUri(Quassel::optionValue("join"));
 }
 
 
